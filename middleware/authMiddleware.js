@@ -7,8 +7,12 @@ const authMiddleware = (req, res, next) => {
         message: "Authorization token tidak ditemukan.",
       });
     }
-    const token = authHeader.split(" ")[1];
-    if (!token) {
+    const [scheme, token, ...extraParts] = authHeader.trim().split(/\s+/);
+    if (
+      scheme.toLowerCase() !== "bearer" ||
+      !token ||
+      extraParts.length > 0
+    ) {
       return res.status(401).json({
         message: "Format token tidak valid.",
       });
