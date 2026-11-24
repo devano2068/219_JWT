@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const db = require("../models");
-const { register } = require("../controllers/userController");
+const { getProfile, register } = require("../controllers/userController");
 
 async function runRegister(body) {
   const req = { body };
@@ -18,6 +18,24 @@ async function runRegister(body) {
     },
   };
   await register(req, res);
+  return { statusCode, responseBody };
+}
+
+async function runProfile(userId) {
+  const req = { user: { id: userId } };
+  let statusCode;
+  let responseBody;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(value) {
+      responseBody = value;
+      return this;
+    },
+  };
+  await getProfile(req, res);
   return { statusCode, responseBody };
 }
 
@@ -52,5 +70,25 @@ test("normalizes registration email before checking for duplicates", async () =>
     assert.equal(result.statusCode, 409);
   } finally {
     db.User.findOne = originalFindOne;
+  }
+});
+
+test("returns only the authenticated user's public profile fields", async () => {
+  const originalFindByPk = db.User.findByPk;
+  db.User.findByPk = async () => ({
+    id: 12,
+    email: "reader@example.com",
+    password: "hashed-secret",
+  });
+
+  try {
+    const result = await runProfile(12);
+    assert.equal(result.statusCode, 200);
+    assert.deepEqual(result.responseBody, {
+      id: 12,
+      email: "reader@example.com",
+    });
+  } finally {
+    db.User.findByPk = originalFindByPk;
   }
 });

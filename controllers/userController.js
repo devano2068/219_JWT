@@ -69,4 +69,18 @@ async function login(req, res) {
   }
 }
 
-module.exports = { login, register };
+async function getProfile(req, res) {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ["id", "email"],
+    });
+    if (!user) {
+      return res.status(404).json({ message: "User tidak ditemukan." });
+    }
+    return res.status(200).json({ id: user.id, email: user.email });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+}
+
+module.exports = { login, register, getProfile };
