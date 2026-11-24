@@ -2,8 +2,31 @@ const db = require('../models');
 const komik = require('../models/komik');
 
 async function getAllKomik(req, res) {
+    const hasPagination = req.query.limit !== undefined || req.query.offset !== undefined;
+    const options = {};
+
+    if (hasPagination) {
+        const limit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+        const offset = req.query.offset === undefined ? 0 : Number(req.query.offset);
+        if (
+            !Number.isInteger(limit) ||
+            limit < 1 ||
+            limit > 100 ||
+            !Number.isInteger(offset) ||
+            offset < 0
+        ) {
+            return res.status(400).json({
+                error: 'limit harus 1-100 dan offset harus bilangan bulat non-negatif',
+            });
+        }
+        options.limit = limit;
+        options.offset = offset;
+    }
+
     try{
-        const komik = await db.Komik.findAll();
+        const komik = hasPagination
+            ? await db.Komik.findAll(options)
+            : await db.Komik.findAll();
         res.status(200).json(komik);
     } catch(err){
         console.error('Error fetching komik:', err.message);
