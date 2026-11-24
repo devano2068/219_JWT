@@ -1,5 +1,39 @@
 const db = require('../models');
-const komik = require('../models/komik');
+
+function validateKomikInput(body, requireTitleAndAuthor = false) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return { error: 'Body request tidak valid' };
+    }
+
+    const values = {};
+    for (const field of ['title', 'description', 'author']) {
+        if (!Object.prototype.hasOwnProperty.call(body, field)) {
+            continue;
+        }
+
+        const value = body[field];
+        if (field === 'description' && value === null) {
+            values[field] = null;
+        } else if (typeof value === 'string') {
+            const trimmedValue = value.trim();
+            if (field !== 'description' && !trimmedValue) {
+                return { error: `${field} tidak boleh kosong` };
+            }
+            values[field] = trimmedValue;
+        } else {
+            return { error: `${field} harus berupa teks` };
+        }
+    }
+
+    if (requireTitleAndAuthor && (!values.title || !values.author)) {
+        return { error: 'title dan author wajib diisi' };
+    }
+    if (!Object.keys(values).length) {
+        return { error: 'Minimal satu field komik harus diisi' };
+    }
+
+    return { values };
+}
 
 async function getAllKomik(req, res) {
     const hasPagination = req.query.limit !== undefined || req.query.offset !== undefined;
@@ -49,9 +83,13 @@ async function getKomikById(req, res) {
 }
 
 async function createKomik(req, res) {
-    const { title, description, author } = req.body;
+    const { values, error } = validateKomikInput(req.body, true);
+    if (error) {
+        return res.status(400).json({ error });
+    }
+
     try{
-        const newKomik = await db.Komik.create({ title, description, author });
+        const newKomik = await db.Komik.create(values);
         res.status(201).json(newKomik);
     } catch(err){
         console.error('Error creating komik:', err.message);
@@ -61,15 +99,17 @@ async function createKomik(req, res) {
 
 async function updateKomik(req, res) {
     const {id} = req.params
-    const { title, description, author } = req.body;
+    const { values, error } = validateKomikInput(req.body);
+    if (error) {
+        return res.status(400).json({ error });
+    }
+
     try{
         const komik = await db.Komik.findByPk(id);
         if(!komik){
             return res.status(404).json({error: 'Komik not found'});
         }
-        komik.title = title;
-        komik.description = description;
-        komik.author = author;
+        Object.assign(komik, values);
         await komik.save();
         res.status(200).json(komik);
     } catch(err){
