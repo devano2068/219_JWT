@@ -5,9 +5,14 @@ const User = db.User;
 
 async function register(req, res) {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email: inputEmail, password } = req.body;
+    if (typeof inputEmail !== "string" || typeof password !== "string" || !password) {
       return res.status(400).json({ message: "Email dan password wajib diisi." });
+    }
+
+    const email = inputEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Format email tidak valid." });
     }
 
     const existingUser = await User.findOne({ where: { email } });
@@ -30,12 +35,13 @@ async function register(req, res) {
 
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email: inputEmail, password } = req.body;
+    if (typeof inputEmail !== "string" || typeof password !== "string" || !password) {
       return res
         .status(400)
         .json({ message: "Email dan password wajib diisi." });
     }
+    const email = inputEmail.trim().toLowerCase();
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: "Email atau password salah" });
